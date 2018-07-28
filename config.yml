@@ -1,0 +1,15 @@
+---
+door_relay_number: 0 # Relay 0 is used for opening and closing the door
+door_state_input_pin: 1 # Door state input is connected to Input Pin 1
+door_switch_input_pin: 0 # Door switch is connected to Input Pin 0
+door_switch_green_led_output_pin: 0
+door_switch_red_led_output_pin: 1
+rfid_reader_green_led_output_pin: 2
+rfid_reader_red_led_output_pin: 3
+ldap_server: your_ldap_url.com
+ldap_port: 389
+ldap_base_dn: "your_base_dn"
+ldap_use_ssl: true
+ldap_user: "uid=example,ou=people,dc=example,dc=org"
+ldap_user_secret: "your_secret"
+ldap_match_attr: "rfidIDs"
