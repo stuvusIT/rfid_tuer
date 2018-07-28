@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import pifacedigitalio
 from threading import Lock, Thread
 from time import sleep
