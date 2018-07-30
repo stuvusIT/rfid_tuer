@@ -24,31 +24,29 @@ class Door(object):
     def update_leds(self):
         global lock
         if self.state:
-            self.pifacedigital.leds[self.door_switch_red_led_output_pin].turn_off()
-            self.pifacedigital.leds[self.rfid_reader_red_led_output_pin].turn_off()
-            self.pifacedigital.leds[self.door_switch_green_led_output_pin].turn_on()
-            self.pifacedigital.leds[self.rfid_reader_green_led_output_pin].turn_on()
-        else:
-            self.pifacedigital.leds[self.door_switch_green_led_output_pin].turn_off()
-            self.pifacedigital.leds[self.rfid_reader_green_led_output_pin].turn_off()
             self.pifacedigital.leds[self.door_switch_red_led_output_pin].turn_on()
             self.pifacedigital.leds[self.rfid_reader_red_led_output_pin].turn_on()
+            self.pifacedigital.leds[self.door_switch_green_led_output_pin].turn_off()
+            self.pifacedigital.leds[self.rfid_reader_green_led_output_pin].turn_off()
+        else:
+            self.pifacedigital.leds[self.door_switch_green_led_output_pin].turn_on()
+            self.pifacedigital.leds[self.rfid_reader_green_led_output_pin].turn_on()
+            self.pifacedigital.leds[self.door_switch_red_led_output_pin].turn_off()
+            self.pifacedigital.leds[self.rfid_reader_red_led_output_pin].turn_off()
             while True:
-                lock.acquire()
                 if self.is_locked() or self.state:
                     break
-                lock.release()
                 self.pifacedigital.leds[self.door_switch_red_led_output_pin].toggle()
                 self.pifacedigital.leds[self.rfid_reader_red_led_output_pin].toggle()
                 self.pifacedigital.leds[self.door_switch_green_led_output_pin].toggle()
                 self.pifacedigital.leds[self.rfid_reader_green_led_output_pin].toggle()
-                sleep(1)
+                sleep(0.5)
 
             if not self.state:
-                self.pifacedigital.leds[self.door_switch_green_led_output_pin].turn_off()
-                self.pifacedigital.leds[self.rfid_reader_green_led_output_pin].turn_off()
-                self.pifacedigital.leds[self.door_switch_red_led_output_pin].turn_on()
-                self.pifacedigital.leds[self.rfid_reader_red_led_output_pin].turn_on()
+                self.pifacedigital.leds[self.door_switch_green_led_output_pin].turn_on()
+                self.pifacedigital.leds[self.rfid_reader_green_led_output_pin].turn_on()
+                self.pifacedigital.leds[self.door_switch_red_led_output_pin].turn_off()
+                self.pifacedigital.leds[self.rfid_reader_red_led_output_pin].turn_off()
 
     def toggle(self):
         if self.state:
@@ -60,28 +58,24 @@ class Door(object):
         global lock
         lock.acquire()
         self.state = False
-        lock.release()
         self.pifacedigital.relays[self.door_relay_number].turn_off()
+        lock.release()
         self.update_leds()
 
     def open(self):
         global lock
         lock.acquire()
         self.state = True
-        lock.release()
         self.pifacedigital.relays[self.door_relay_number].turn_on()
+        lock.release()
         self.update_leds()
 
     def is_locked(self):
-        # True is open False is closed
-        status = bool(self.pifacedigital.input_pins[self.door_state_input_pin].value)
+        status = not bool(self.pifacedigital.input_pins[self.door_state_input_pin].value)
         return status
 
     def event_on_door_switch(self, event):
         self.toggle()
-        print("Event on door happend")
-
-
 
 from parseATR import match_atr_differentiated
 def parseATRTuer(ATR):
@@ -116,7 +110,7 @@ class PrintObserver(CardObserver):
                 card.connection = card.createConnection()
                 card.connection.connect()
                 card_id_hex = toHexString(card.connection.transmit([0xFF, 0xCA, 0x00, 0x00, 0x00])[0])
-                card_type = parseATRTuer(toHexString(card.atr))[0]
+                card_type = "test" #parseATRTuer(toHexString(card.atr))[0]
                 self.conn.search(self.ldap_base_dn, '({}=*)'.format(self.ldap_match_attr), attributes=[self.ldap_match_attr])
                 print("Connection from {} using a {} card".format(card_id_hex, card_type))
                 for entry in self.conn.entries:
@@ -129,7 +123,7 @@ class PrintObserver(CardObserver):
             except NoCardException:
                 print("Error reading card carrying on")
 
-def main():
+#def main():
     output_pins = [0, 1, 2, 3]
     input_pins = [0]
     with open("config.yml", 'r') as stream:
@@ -147,18 +141,17 @@ def main():
         ldap_use_ssl = config['ldap_use_ssl']
         ldap_user = config['ldap_user']
         ldap_user_secret = config['ldap_user_secret']
-
-    #pifacedigital = pifacedigitalio.PiFaceDigital()
-    pifacedigital = None
-
+    
+    pifacedigital = pifacedigitalio.PiFaceDigital()
     door = Door(pifacedigital, output_pins, input_pins, relay_number)
-    #listener = pifacedigitalio.InputEventListener(chip=pifacedigital)
-    #listener.register(input_pins[0], pifacedigitalio.IODIR_BOTH, door.on_door_switch)
-    #listener.activate()
-    #door.close()
+    listener = pifacedigitalio.InputEventListener(chip=pifacedigital)
+    listener.register(1, pifacedigitalio.IODIR_RISING_EDGE, door.event_on_door_switch)
+    listener.activate()
+    door.close()
     cardmonitor = CardMonitor()
     cardobserver = PrintObserver(door, ldap_base_dn, ldap_server, ldap_port, ldap_use_ssl, ldap_user, ldap_user_secret, ldap_match_attr)
     cardmonitor.addObserver(cardobserver)
+
     while True:
         sleep(60)
     cardmonitor.deleteObserver(cardobserver)
