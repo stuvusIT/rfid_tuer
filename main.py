@@ -131,7 +131,7 @@ class PrintObserver(CardObserver):
             except NoCardException:
                 print("Error reading card carrying on")
 
-#def main():
+def main():
     output_pins = [0, 1, 2, 3]
     input_pins = [0]
     with open("config.yml", 'r') as stream:
