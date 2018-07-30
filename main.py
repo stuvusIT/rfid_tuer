@@ -40,7 +40,7 @@ class Door(object):
                 self.pifacedigital.leds[self.rfid_reader_red_led_output_pin].toggle()
                 self.pifacedigital.leds[self.door_switch_green_led_output_pin].toggle()
                 self.pifacedigital.leds[self.rfid_reader_green_led_output_pin].toggle()
-                sleep(0.5)
+                sleep(0.25)
 
             if not self.state:
                 self.pifacedigital.leds[self.door_switch_green_led_output_pin].turn_on()
@@ -141,7 +141,6 @@ class PrintObserver(CardObserver):
         ldap_use_ssl = config['ldap_use_ssl']
         ldap_user = config['ldap_user']
         ldap_user_secret = config['ldap_user_secret']
-    
     pifacedigital = pifacedigitalio.PiFaceDigital()
     door = Door(pifacedigital, output_pins, input_pins, relay_number)
     listener = pifacedigitalio.InputEventListener(chip=pifacedigital)
