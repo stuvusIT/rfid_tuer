@@ -58,7 +58,7 @@ class Door(object):
         global lock
         lock.acquire()
         self.state = False
-        self.pifacedigital.relays[self.door_relay_number].turn_off()
+        self.pifacedigital.relays[self.door_relay_number].turn_on()
         lock.release()
         self.update_leds()
 
@@ -66,7 +66,7 @@ class Door(object):
         global lock
         lock.acquire()
         self.state = True
-        self.pifacedigital.relays[self.door_relay_number].turn_on()
+        self.pifacedigital.relays[self.door_relay_number].turn_off()
         lock.release()
         self.update_leds()
 
