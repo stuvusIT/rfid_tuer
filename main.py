@@ -8,6 +8,7 @@ from smartcard.Exceptions import CardConnectionException, NoCardException
 from smartcard.util import toHexString
 from ldap3 import Server, Connection, ALL
 import yaml
+from datetime import datetime
 
 lock = Lock()
 class Door(object):
@@ -113,11 +114,18 @@ class PrintObserver(CardObserver):
                 card_type = "test" #parseATRTuer(toHexString(card.atr))[0]
                 self.conn.search(self.ldap_base_dn, '({}=*)'.format(self.ldap_match_attr), attributes=[self.ldap_match_attr])
                 print("Connection from {} using a {} card".format(card_id_hex, card_type))
+                found_match = False
                 for entry in self.conn.entries:
                     value_to_compare = str(entry[self.ldap_match_attr]).strip()
                     if value_to_compare == card_id_hex.strip():
                         print("toggle door")
+                        found_match = True
                         self.door.toggle()
+                        break
+                if not found_match:
+                    print("Unknown Tag")
+                    print(card_id_hex.strip())
+                    print(datetime.now())
             except CardConnectionException:
                 print("Error reading card carrying on")
             except NoCardException:
