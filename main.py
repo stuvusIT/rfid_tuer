@@ -9,74 +9,7 @@ from smartcard.util import toHexString
 from ldap3 import Server, Connection, ALL
 import yaml
 from datetime import datetime
-
-lock = Lock()
-class Door(object):
-    def __init__(self, pifacedigital, output_pins, input_pins, relay_number ):
-        self.pifacedigital = pifacedigital
-        self.door_switch_green_led_output_pin = output_pins[0]
-        self.door_switch_red_led_output_pin = output_pins[1]
-        self.rfid_reader_red_led_output_pin = output_pins[2]
-        self.rfid_reader_green_led_output_pin = output_pins[3]
-        self.door_state_input_pin = input_pins[0]
-        self.door_relay_number = relay_number
-        self.state = False
-
-    def update_leds(self):
-        global lock
-        if self.state:
-            self.pifacedigital.leds[self.door_switch_red_led_output_pin].turn_on()
-            self.pifacedigital.leds[self.rfid_reader_red_led_output_pin].turn_on()
-            self.pifacedigital.leds[self.door_switch_green_led_output_pin].turn_off()
-            self.pifacedigital.leds[self.rfid_reader_green_led_output_pin].turn_off()
-        else:
-            self.pifacedigital.leds[self.door_switch_green_led_output_pin].turn_on()
-            self.pifacedigital.leds[self.rfid_reader_green_led_output_pin].turn_on()
-            self.pifacedigital.leds[self.door_switch_red_led_output_pin].turn_off()
-            self.pifacedigital.leds[self.rfid_reader_red_led_output_pin].turn_off()
-            while True:
-                if self.is_locked() or self.state:
-                    break
-                self.pifacedigital.leds[self.door_switch_red_led_output_pin].toggle()
-                self.pifacedigital.leds[self.rfid_reader_red_led_output_pin].toggle()
-                self.pifacedigital.leds[self.door_switch_green_led_output_pin].toggle()
-                self.pifacedigital.leds[self.rfid_reader_green_led_output_pin].toggle()
-                sleep(0.25)
-
-            if not self.state:
-                self.pifacedigital.leds[self.door_switch_green_led_output_pin].turn_on()
-                self.pifacedigital.leds[self.rfid_reader_green_led_output_pin].turn_on()
-                self.pifacedigital.leds[self.door_switch_red_led_output_pin].turn_off()
-                self.pifacedigital.leds[self.rfid_reader_red_led_output_pin].turn_off()
-
-    def toggle(self):
-        if self.state:
-            self.close()
-        else:
-            self.open()
-
-    def close(self):
-        global lock
-        lock.acquire()
-        self.state = False
-        self.pifacedigital.relays[self.door_relay_number].turn_off()
-        lock.release()
-        self.update_leds()
-
-    def open(self):
-        global lock
-        lock.acquire()
-        self.state = True
-        self.pifacedigital.relays[self.door_relay_number].turn_on()
-        lock.release()
-        self.update_leds()
-
-    def is_locked(self):
-        status = not bool(self.pifacedigital.input_pins[self.door_state_input_pin].value)
-        return status
-
-    def event_on_door_switch(self, event):
-        self.toggle()
+from door import Door
 
 from parseATR import match_atr_differentiated
 def parseATRTuer(ATR):
@@ -132,23 +65,7 @@ class PrintObserver(CardObserver):
                 print("Error reading card carrying on")
 
 def main():
-    output_pins = [0, 1, 2, 3]
-    input_pins = [0]
-    with open("config.yml", 'r') as stream:
-        config = yaml.load(stream)
-        output_pins[0] = config['door_switch_green_led_output_pin']
-        output_pins[1] = config['door_switch_red_led_output_pin']
-        output_pins[2] = config['rfid_reader_green_led_output_pin']
-        output_pins[3] = config['rfid_reader_red_led_output_pin']
-        input_pins[0] = config['door_state_input_pin']
-        relay_number = config['door_relay_number']
-        ldap_match_attr = config['ldap_match_attr']
-        ldap_server = config['ldap_server']
-        ldap_port = config['ldap_port']
-        ldap_base_dn = config['ldap_base_dn']
-        ldap_use_ssl = config['ldap_use_ssl']
-        ldap_user = config['ldap_user']
-        ldap_user_secret = config['ldap_user_secret']
+    output_pins, input_pins, relay_number, ldap_match_attr, ldap_server, ldap_port, ldap_base_dn, ldap_use_ssl, ldap_user, ldap_user_secret = read_config("config.yml")
     pifacedigital = pifacedigitalio.PiFaceDigital()
     door = Door(pifacedigital, output_pins, input_pins, relay_number)
     listener = pifacedigitalio.InputEventListener(chip=pifacedigital)
