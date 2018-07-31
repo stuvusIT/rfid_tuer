@@ -7,9 +7,9 @@ from smartcard.CardMonitoring import CardMonitor, CardObserver
 from smartcard.Exceptions import CardConnectionException, NoCardException
 from smartcard.util import toHexString
 from ldap3 import Server, Connection, ALL
-import yaml
 from datetime import datetime
 from door import Door
+from util import read_config
 
 from parseATR import match_atr_differentiated
 def parseATRTuer(ATR):

@@ -1,14 +1,6 @@
 #!/usr/bin/python3
 
 import pifacedigitalio
-from threading import Lock, Thread
-from time import sleep
-from smartcard.CardMonitoring import CardMonitor, CardObserver
-from smartcard.Exceptions import CardConnectionException, NoCardException
-from smartcard.util import toHexString
-from ldap3 import Server, Connection, ALL
-import yaml
-from datetime import datetime
 from door import Door
 from util import read_config
 
