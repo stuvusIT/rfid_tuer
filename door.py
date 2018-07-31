@@ -1,4 +1,5 @@
 from threading import Lock, Thread
+from time import sleep
 
 class Door(object):
     def __init__(self, pifacedigital, output_pins, input_pins, relay_number ):
