@@ -1,3 +1,4 @@
+import yaml
 
 def read_config(config_name):
     output_pins = [0, 1, 2, 3]

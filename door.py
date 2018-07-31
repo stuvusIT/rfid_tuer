@@ -1,3 +1,4 @@
+from threading import Lock, Thread
 
 class Door(object):
     def __init__(self, pifacedigital, output_pins, input_pins, relay_number ):
