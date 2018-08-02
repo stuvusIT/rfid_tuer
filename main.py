@@ -17,8 +17,7 @@ def parseATRTuer(ATR):
     if card:
         # exact match
         if ATR in card:
-            return card[ATR]
-            # remove the entry so it is not displayed as "RE match"
+            return card[ATR] # remove the entry so it is not displayed as "RE match"
             del card[ATR]
     else:
         return False
@@ -45,12 +44,15 @@ class PrintObserver(CardObserver):
                 card.connection.connect()
                 card_id_hex = toHexString(card.connection.transmit([0xFF, 0xCA, 0x00, 0x00, 0x00])[0])
                 card_type = "test" #parseATRTuer(toHexString(card.atr))[0]
-                self.conn.search(self.ldap_base_dn, '({}=*)'.format(self.ldap_match_attr), attributes=[self.ldap_match_attr])
+                ldap_query = '({}=*)'.format(self.ldap_match_attr)
+                self.conn.search(self.ldap_base_dn, ldap_query, attributes=[self.ldap_match_attr])
                 print("Connection from {} using a {} card".format(card_id_hex, card_type))
                 found_match = False
                 for entry in self.conn.entries:
                     value_to_compare = str(entry[self.ldap_match_attr]).strip()
-                    if value_to_compare == card_id_hex.strip():
+                    pfusch = "".join(str(card_id_hex).split()).lower()
+                    card_with_type = "DESFireEV1-{}".format(pfusch)
+                    if value_to_compare == card_with_type:
                         print("toggle door")
                         found_match = True
                         self.door.toggle()
@@ -68,10 +70,15 @@ def main():
     output_pins, input_pins, relay_number, ldap_match_attr, ldap_server, ldap_port, ldap_base_dn, ldap_use_ssl, ldap_user, ldap_user_secret = read_config("config.yml")
     pifacedigital = pifacedigitalio.PiFaceDigital()
     door = Door(pifacedigital, output_pins, input_pins, relay_number)
-    listener = pifacedigitalio.InputEventListener(chip=pifacedigital)
-    listener.register(1, pifacedigitalio.IODIR_RISING_EDGE, door.event_on_door_switch)
-    listener.activate()
+    # To fix startup problems we toggle the lock
     door.close()
+    sleep(0.5)
+    door.open()
+    sleep(0.5)
+    door.close()
+    listener = pifacedigitalio.InputEventListener(chip=pifacedigital)
+    listener.register(1, pifacedigitalio.IODIR_ON, door.event_on_door_switch)
+    listener.activate()
     cardmonitor = CardMonitor()
     cardobserver = PrintObserver(door, ldap_base_dn, ldap_server, ldap_port, ldap_use_ssl, ldap_user, ldap_user_secret, ldap_match_attr)
     cardmonitor.addObserver(cardobserver)
