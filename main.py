@@ -10,6 +10,8 @@ from ldap3 import Server, Connection, ALL
 from datetime import datetime
 from door import Door
 from util import read_config
+import logging
+import sys
 
 from parseATR import match_atr_differentiated
 def parseATRTuer(ATR):
@@ -43,30 +45,29 @@ class PrintObserver(CardObserver):
                 card.connection = card.createConnection()
                 card.connection.connect()
                 card_id_hex = toHexString(card.connection.transmit([0xFF, 0xCA, 0x00, 0x00, 0x00])[0])
-                card_type = "test" #parseATRTuer(toHexString(card.atr))[0]
+                card_type = "DESFireEV1" #parseATRTuer(toHexString(card.atr))[0]
                 ldap_query = '({}=*)'.format(self.ldap_match_attr)
                 self.conn.search(self.ldap_base_dn, ldap_query, attributes=[self.ldap_match_attr])
-                print("Connection from {} using a {} card".format(card_id_hex, card_type))
+                logging.info("Connection from {} using a {} card".format(card_id_hex, card_type))
                 found_match = False
                 for entry in self.conn.entries:
                     value_to_compare = str(entry[self.ldap_match_attr]).strip()
                     pfusch = "".join(str(card_id_hex).split()).lower()
                     card_with_type = "DESFireEV1-{}".format(pfusch)
                     if value_to_compare == card_with_type:
-                        print("toggle door")
+                        logging.info("Toggle door")
                         found_match = True
                         self.door.toggle()
                         break
                 if not found_match:
-                    print("Unknown Tag")
-                    print(card_id_hex.strip())
-                    print(datetime.now())
+                    logging.warning("Unknown Tag: DESFireEV1-{}".format(card_id_hex.strip()))
             except CardConnectionException:
-                print("Error reading card carrying on")
+                logging.warning("Error reading card carrying on")
             except NoCardException:
-                print("Error reading card carrying on")
+                logging.warning("Error reading card carrying on")
 
 def main():
+    sys.stdout = open('door.log')
     output_pins, input_pins, relay_number, ldap_match_attr, ldap_server, ldap_port, ldap_base_dn, ldap_use_ssl, ldap_user, ldap_user_secret = read_config("config.yml")
     pifacedigital = pifacedigitalio.PiFaceDigital()
     door = Door(pifacedigital, output_pins, input_pins, relay_number)
