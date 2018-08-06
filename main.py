@@ -67,7 +67,6 @@ class PrintObserver(CardObserver):
                 logging.warning("Error reading card carrying on")
 
 def main():
-    sys.stdout = open('door.log')
     output_pins, input_pins, relay_number, ldap_match_attr, ldap_server, ldap_port, ldap_base_dn, ldap_use_ssl, ldap_user, ldap_user_secret = read_config("config.yml")
     pifacedigital = pifacedigitalio.PiFaceDigital()
     door = Door(pifacedigital, output_pins, input_pins, relay_number)
