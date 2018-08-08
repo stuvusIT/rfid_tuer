@@ -1,6 +1,5 @@
 from threading import Lock, Thread
 from time import sleep
-import sched, time
 
 class Door(object):
     def __init__(self, pifacedigital, output_pins, input_pins, relay_number ):
@@ -12,8 +11,6 @@ class Door(object):
         self.rfid_reader_green_led_output_pin = output_pins[3]
         self.door_state_input_pin = input_pins[0]
         self.door_relay_number = relay_number
-        self.event = None
-        self.scheduler = sched.scheduler(time.time, time.sleep)
         self.state = False
 
     def update_leds(self):
@@ -47,12 +44,6 @@ class Door(object):
             self.close()
         else:
             self.open()
-            if self.event is not None:
-                self.event = self.scheduler.enter(600, self.close())
-            else:
-                self.scheduler.cancel(self.event)
-                self.event = None
-
 
     def close(self):
         self.lock.acquire()
