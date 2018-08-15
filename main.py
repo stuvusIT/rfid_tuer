@@ -37,6 +37,10 @@ class PrintObserver(CardObserver):
         self.ldap_match_attr = ldap_match_attr
         self.server = Server(ldap_server, port=ldap_port, use_ssl=ldap_use_ssl)
         self.conn = Connection(self.server, ldap_user, ldap_user_secret, auto_bind=True)
+        self.logger = logging.getLogger('door')
+        hdlr = logging.FileHandler('/var/log/door.log')
+        self.logger.addHandler(hdlr) 
+        self.logger.setLevel(logging.WARNING)
 
     def update(self, observable, actions):
         (addedcards, removedcards) = actions
@@ -48,23 +52,23 @@ class PrintObserver(CardObserver):
                 card_type = "DESFireEV1" #parseATRTuer(toHexString(card.atr))[0]
                 ldap_query = '({}=*)'.format(self.ldap_match_attr)
                 self.conn.search(self.ldap_base_dn, ldap_query, attributes=[self.ldap_match_attr])
-                logging.info("Connection from {} using a {} card".format(card_id_hex, card_type))
+                self.logger.info("Connection from {} using a {} card".format(card_id_hex, card_type))
                 found_match = False
                 for entry in self.conn.entries:
                     value_to_compare = str(entry[self.ldap_match_attr]).strip()
                     pfusch = "".join(str(card_id_hex).split()).lower()
-                    card_with_type = "DESFireEV1-{}".format(pfusch)
+                    card_with_type = "DESFireEV1-{}".format(pfusch.strip())
                     if value_to_compare == card_with_type:
                         logging.info("Toggle door")
                         found_match = True
                         self.door.toggle()
                         break
                 if not found_match:
-                    logging.warning("Unknown Tag: DESFireEV1-{}".format(card_id_hex.strip()))
+                    self.logger.warning("Unknown Tag: DESFireEV1-{}".format(card_id_hex.strip()))
             except CardConnectionException:
-                logging.warning("Error reading card carrying on")
+                self.logger.warning("Error reading card carrying on")
             except NoCardException:
-                logging.warning("Error reading card carrying on")
+                self.logger.warning("Error reading card carrying on")
 
 def main():
     output_pins, input_pins, relay_number, ldap_match_attr, ldap_server, ldap_port, ldap_base_dn, ldap_use_ssl, ldap_user, ldap_user_secret = read_config("config.yml")
@@ -78,6 +82,7 @@ def main():
     door.close()
     listener = pifacedigitalio.InputEventListener(chip=pifacedigital)
     listener.register(1, pifacedigitalio.IODIR_ON, door.event_on_door_switch)
+    print("Activating listneer")
     listener.activate()
     cardmonitor = CardMonitor()
     cardobserver = PrintObserver(door, ldap_base_dn, ldap_server, ldap_port, ldap_use_ssl, ldap_user, ldap_user_secret, ldap_match_attr)
