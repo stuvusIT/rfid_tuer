@@ -57,14 +57,14 @@ class PrintObserver(CardObserver):
                 for entry in self.conn.entries:
                     value_to_compare = str(entry[self.ldap_match_attr]).strip()
                     pfusch = "".join(str(card_id_hex).split()).lower()
-                    card_with_type = "DESFireEV1-{}".format(pfusch.strip())
+                    card_with_type = "DESFireEV1-{}".format(pfusch)
                     if value_to_compare == card_with_type:
                         logging.info("Toggle door")
                         found_match = True
                         self.door.toggle()
                         break
                 if not found_match:
-                    self.logger.warning("Unknown Tag: DESFireEV1-{}".format(card_id_hex.strip()))
+                    self.logger.warning("Time {}: Unknown Tag: DESFireEV1-{}".format(str(datetime.now()), "".join(card_id_hex.split(" ")).lower()))
             except CardConnectionException:
                 self.logger.warning("Error reading card carrying on")
             except NoCardException:
