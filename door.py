@@ -1,5 +1,17 @@
 from threading import Lock, Thread
 from time import sleep
+import logging
+from systemd.journal import JournalHandler
+
+logger = logging.getLogger(__name__)
+journalHandler = JournalHandler()
+journalHandler.setFormatter(logging.Formatter('[%(levelname)s] %(message)s'))
+logger.addHandler(journalHandler)
+fileHandler = logging.FileHandler('/var/log/door.log')
+fileHandler.setFormatter(logging.Formatter("%(asctime)s|%(levelname)s;|%(message)s"))
+logger.addHandler(fileHandler)
+logger.setLevel(logging.INFO)
+
 
 class Door(object):
     def __init__(self, pifacedigital, output_pins, input_pins, relay_number ):
@@ -51,6 +63,7 @@ class Door(object):
         self.pifacedigital.relays[self.door_relay_number].turn_off()
         self.lock.release()
         self.update_leds()
+        logger.info("Changed state to close")
 
     def open(self):
         self.lock.acquire()
@@ -58,10 +71,12 @@ class Door(object):
         self.pifacedigital.relays[self.door_relay_number].turn_on()
         self.lock.release()
         self.update_leds()
+        logger.info("Changed state to open")
 
     def is_locked(self):
         status = not bool(self.pifacedigital.input_pins[self.door_state_input_pin].value)
         return status
 
     def event_on_door_switch(self, event):
+        logger.info("Indoor button pressed")
         self.toggle()

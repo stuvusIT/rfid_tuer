@@ -10,8 +10,18 @@ from ldap3 import Server, Connection, ALL
 from datetime import datetime
 from door import Door
 from util import read_config
+from systemd.journal import JournalHandler
 import logging
 import sys
+
+logger = logging.getLogger(__name__)
+journalHandler = JournalHandler()
+journalHandler.setFormatter(logging.Formatter('[%(levelname)s] %(message)s'))
+logger.addHandler(journalHandler)
+fileHandler = logging.FileHandler('/var/log/door.log')
+fileHandler.setFormatter(logging.Formatter("%(asctime)s|%(levelname)s;|%(message)s"))
+logger.addHandler(fileHandler)
+logger.setLevel(logging.INFO)
 
 from parseATR import match_atr_differentiated
 def parseATRTuer(ATR):
@@ -31,16 +41,13 @@ class PrintObserver(CardObserver):
     prints the list of cards
     """
 
-    def __init__(self, door, ldap_base_dn, ldap_server, ldap_port, ldap_use_ssl, ldap_user, ldap_user_secret, ldap_match_attr):
+    def __init__(self, door, ldap_base_dn, ldap_server, ldap_port, ldap_use_ssl, ldap_user, ldap_user_secret, ldap_match_attr, ldap_owner_attr):
         self.door = door
         self.ldap_base_dn = ldap_base_dn
         self.ldap_match_attr = ldap_match_attr
+        self.ldap_owner_attr = ldap_owner_attr
         self.server = Server(ldap_server, port=ldap_port, use_ssl=ldap_use_ssl)
         self.conn = Connection(self.server, ldap_user, ldap_user_secret, auto_bind=True)
-        self.logger = logging.getLogger('door')
-        hdlr = logging.FileHandler('/var/log/door.log')
-        self.logger.addHandler(hdlr) 
-        self.logger.setLevel(logging.WARNING)
 
     def update(self, observable, actions):
         (addedcards, removedcards) = actions
@@ -51,27 +58,27 @@ class PrintObserver(CardObserver):
                 card_id_hex = toHexString(card.connection.transmit([0xFF, 0xCA, 0x00, 0x00, 0x00])[0])
                 card_type = "DESFireEV1" #parseATRTuer(toHexString(card.atr))[0]
                 ldap_query = '({}=*)'.format(self.ldap_match_attr)
-                self.conn.search(self.ldap_base_dn, ldap_query, attributes=[self.ldap_match_attr])
-                self.logger.info("Connection from {} using a {} card".format(card_id_hex, card_type))
+                self.conn.search(self.ldap_base_dn, ldap_query, attributes=[self.ldap_match_attr,self.ldap_owner_attr])
                 found_match = False
                 for entry in self.conn.entries:
+                    card_owner = entry[self.ldap_owner_attr]
                     value_to_compare = str(entry[self.ldap_match_attr]).strip()
                     pfusch = "".join(str(card_id_hex).split()).lower()
                     card_with_type = "DESFireEV1-{}".format(pfusch)
                     if value_to_compare == card_with_type:
-                        logging.info("Toggle door")
+                        logger.info("Connection from {} using a {} card with ID {}. Toggling door.".format(card_owner, card_type, card_id_hex))
                         found_match = True
                         self.door.toggle()
                         break
                 if not found_match:
-                    self.logger.warning("Time {}: Unknown Tag: DESFireEV1-{}".format(str(datetime.now()), "".join(card_id_hex.split(" ")).lower()))
+                    logger.warning("Time {}: Unknown Tag: DESFireEV1-{}".format(str(datetime.now()), "".join(card_id_hex.split(" ")).lower()))
             except CardConnectionException:
-                self.logger.warning("Error reading card carrying on")
+                logger.warning("Error reading card (CardConnectionException) - carrying on")
             except NoCardException:
-                self.logger.warning("Error reading card carrying on")
+                logger.warning("Error reading card (NoCardException) - carrying on")
 
 def main():
-    output_pins, input_pins, relay_number, ldap_match_attr, ldap_server, ldap_port, ldap_base_dn, ldap_use_ssl, ldap_user, ldap_user_secret = read_config("config.yml")
+    output_pins, input_pins, relay_number, ldap_match_attr, ldap_owner_attr, ldap_server, ldap_port, ldap_base_dn, ldap_use_ssl, ldap_user, ldap_user_secret = read_config("config.yml")
     pifacedigital = pifacedigitalio.PiFaceDigital()
     door = Door(pifacedigital, output_pins, input_pins, relay_number)
     # To fix startup problems we toggle the lock
@@ -82,10 +89,10 @@ def main():
     door.close()
     listener = pifacedigitalio.InputEventListener(chip=pifacedigital)
     listener.register(1, pifacedigitalio.IODIR_ON, door.event_on_door_switch)
-    print("Activating listneer")
+    logger.info("Activating listener")
     listener.activate()
     cardmonitor = CardMonitor()
-    cardobserver = PrintObserver(door, ldap_base_dn, ldap_server, ldap_port, ldap_use_ssl, ldap_user, ldap_user_secret, ldap_match_attr)
+    cardobserver = PrintObserver(door, ldap_base_dn, ldap_server, ldap_port, ldap_use_ssl, ldap_user, ldap_user_secret, ldap_match_attr, ldap_owner_attr)
     cardmonitor.addObserver(cardobserver)
 
     while True:
